@@ -1,0 +1,1 @@
+void tm1637_init(&dev, &params);
