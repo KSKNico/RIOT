@@ -2,6 +2,7 @@
 
 #include "periph/gpio.h"
 #include <stdio.h>
+#include "ztimer.h"
 
 static bool test_gpio_read(gpio_t pin) {
     return gpio_read(pin);
@@ -25,6 +26,10 @@ int main(void) {
 
     tm1637_init(&dev, &tm1637_params);
     
-    tm1637_write_number(&dev, 4567);
+
+    for (int i = 9999; i >= -999 ; --i) {
+        tm1637_write_number(&dev, 0, false, false);
+    }
+
 
 }

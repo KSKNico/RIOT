@@ -8,8 +8,9 @@
 #define ADDRESS_COMMAND 0xC0
 
 #define ON_BIT 0x08
+#define DOT_BIT_MASK 0x80
 
-#define BIT_TIME_MS 5
+#define BIT_TIME_MS 3
 
 static const uint8_t segments_array[] = {
     0b00111111, // 0
@@ -30,7 +31,7 @@ static void delay(void) {
     ztimer_sleep(ZTIMER_MSEC, BIT_TIME_MS);
 }
 
-static void start(tm1637_t const *dev) {
+static void start(const tm1637_t *dev) {
     gpio_write(dev->params.dio, false);
     delay();
 }
@@ -106,25 +107,57 @@ static void transmit_segments(const tm1637_t *dev, const uint8_t *segments) {
     stop(dev);
 }
 
-void tm1637_write_number(const tm1637_t *dev, int16_t number) {
+static void enable_dots(uint8_t *segments) {    
+    segments[1] |= DOT_BIT_MASK;
+}
+
+void tm1637_clear(const tm1637_t *dev) {
+    uint8_t segments[4] = {0, 0, 0, 0};
+    transmit_segments(dev, segments);
+}
+
+
+void tm1637_write_number(const tm1637_t *dev, int16_t number, bool dots, bool leading_zeros) {
     assert(number <= 9999);
     assert(number >= -999);
-    // get each digit of the number
 
     uint8_t segments[4] = {0, 0, 0, 0};
 
-    if (number < 0) {
-        segments[0] = 0b01000000;
+    if (number == 0) {
+        segments[3] = segments_array[0];
+    } else if (number < 0) {
         number = -number;
+        for (int i = 0; i < 4; ++i) {
+            if (number != 0) {
+                segments[3 - i] = segments_array[number % 10];
+                number /= 10;
+            } else if (!leading_zeros) {
+                segments[3 - i] = minus_sign;
+                break;
+            } else {
+                segments[0] = minus_sign;
+                break;
+            }
+        }
+    } else {
+        for (int i = 0; i < 4; ++i) {
+            if (number != 0) {
+                segments[3 - i] = segments_array[number % 10];
+                number /= 10;
+            }
+        }
     }
 
-    for (int i = 0; i < 4; ++i) {
-        segments[3 - i] = segments_array[number % 10];
-        number /= 10;
-
-        if (number == 0) {
-            segments[3 - i] = 0;
+    if (leading_zeros) {
+        for (int i = 0; i < 4; ++i) {
+            if (segments[i] == 0) {
+                segments[i] = segments_array[0];
+            }
         }
+    }
+
+    if (dots) {
+        enable_dots(segments);
     }
 
     transmit_segments(dev, segments);
