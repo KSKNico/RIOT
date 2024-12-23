@@ -22,16 +22,16 @@ typedef struct {
 
 
 /**
- * @brief Initializes the tm1637 device.
+ * @brief Initializes the tm1637 device
  * 
- * @param dev Driver structure to initialize
- * @param params Configuration parameters
+ * @param dev device descriptor of the display
+ * @param params configuration parameters
  * @return 0 on success, -1 on error
  */
 int tm1637_init(tm1637_t *dev, const tm1637_params_t *params);
 
 /**
- * @brief Writes an integer to the display's register.
+ * @brief Writes an integer to the display
  * 
  * @note The integer can't be bigger than 9999 or smaller than
  * -999 as only 4 digits can be displayed at a time. 
@@ -40,18 +40,17 @@ int tm1637_init(tm1637_t *dev, const tm1637_params_t *params);
  * and the number.
  * 
  * 
- * 
- * @param dev Device to write to
- * @param number Number to write. Needs to be between 9999 and -999
- * @param dots If enabled, will display dots
- * @param leading_zeros If enabled, will display leading zeros
+ * @param dev device descriptor of the display
+ * @param number number to write, in the range of 9999 to -999
+ * @param dots If enabled, displays dots
+ * @param leading_zeros If enabled, displays leading zeros
  */
 void tm1637_write_number(const tm1637_t *dev, int16_t number, bool dots, bool leading_zeros);
 
 /**
- * @brief clears the display
+ * @brief Clear display
  * 
- * @param dev Device to clear
+ * @param dev device descriptor of the display
  */
 void tm1637_clear(const tm1637_t *dev);
 

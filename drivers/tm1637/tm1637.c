@@ -12,6 +12,8 @@
 
 #define BIT_TIME_MS 3
 
+#define DIGIT_COUNT 4
+
 static const uint8_t segments_array[] = {
     0b00111111, // 0
     0b00000110, // 1
@@ -36,6 +38,15 @@ static void start(const tm1637_t *dev) {
     delay();
 }
 
+
+/**
+ * @brief Stops the transmission to the display
+ * 
+ * @note A stop is needed after transmission of certain bytes according to 
+ * the specification.
+ * 
+ * @param[in] dev device descriptor of display
+ */
 static void stop(tm1637_t const *dev) {
     gpio_write(dev->params.dio, false);
     delay();
@@ -45,6 +56,13 @@ static void stop(tm1637_t const *dev) {
     delay();
 }
 
+
+/**
+ * @brief Transmits a single byte to the display
+ * 
+ * @param[in] dev device descriptor of the display
+ * @param[in] byte byte to transmit
+ */
 static void transmit_byte(tm1637_t const *dev, uint8_t byte) {
     for (int i = 0; i < 8; ++i) {
         bool value = (byte >> i) & 0x01;
@@ -66,10 +84,45 @@ static void transmit_byte(tm1637_t const *dev, uint8_t byte) {
     delay();
 }
 
+/**
+ * @brief Transmits the segements array of length 4 to the display
+ * 
+ * @param dev device descriptor of the display
+ * @param segments array of length 4 encoding the display's segments
+ */
+static void transmit_segments(const tm1637_t *dev, const uint8_t *segments) {
+    start(dev);
+    transmit_byte(dev, DATA_COMMAND);
+    stop(dev);
+
+    start(dev);
+    transmit_byte(dev, ADDRESS_COMMAND);
+
+    for (int i = 0; i < DIGIT_COUNT; ++i) {
+        transmit_byte(dev, segments[i]);
+    }
+    stop(dev);
+
+    start(dev);
+    transmit_byte(dev, DISPLAY_AND_CONTROL_COMMAND | dev->params.brightness | ON_BIT);
+
+    stop(dev);
+}
+
+/**
+ * @brief Modifies the segments array to enable the dots
+ * 
+ * @param[in,out] segments  segements to enable the dots on
+ */
+static void enable_dots(uint8_t *segments) {    
+    segments[1] |= DOT_BIT_MASK;
+}
+
+
 int tm1637_init(tm1637_t *dev, const tm1637_params_t *params) {
     assert(params != NULL);
 
-    assert(params->brightness <= 0x0f);
+    assert(params->brightness <= 0x07);
 
     dev->params = *params;
 
@@ -88,31 +141,8 @@ int tm1637_init(tm1637_t *dev, const tm1637_params_t *params) {
     return 0;
 }
 
-static void transmit_segments(const tm1637_t *dev, const uint8_t *segments) {
-    start(dev);
-    transmit_byte(dev, DATA_COMMAND);
-    stop(dev);
-
-    start(dev);
-    transmit_byte(dev, ADDRESS_COMMAND);
-
-    for (int i = 0; i < 4; ++i) {
-        transmit_byte(dev, segments[i]);
-    }
-    stop(dev);
-
-    start(dev);
-    transmit_byte(dev, DISPLAY_AND_CONTROL_COMMAND | dev->params.brightness | ON_BIT);
-
-    stop(dev);
-}
-
-static void enable_dots(uint8_t *segments) {    
-    segments[1] |= DOT_BIT_MASK;
-}
-
 void tm1637_clear(const tm1637_t *dev) {
-    uint8_t segments[4] = {0, 0, 0, 0};
+    uint8_t segments[DIGIT_COUNT] = {0, 0, 0, 0};
     transmit_segments(dev, segments);
 }
 
@@ -121,18 +151,18 @@ void tm1637_write_number(const tm1637_t *dev, int16_t number, bool dots, bool le
     assert(number <= 9999);
     assert(number >= -999);
 
-    uint8_t segments[4] = {0, 0, 0, 0};
+    uint8_t segments[DIGIT_COUNT] = {0, 0, 0, 0};
 
     if (number == 0) {
         segments[3] = segments_array[0];
     } else if (number < 0) {
         number = -number;
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < DIGIT_COUNT; ++i) {
             if (number != 0) {
-                segments[3 - i] = segments_array[number % 10];
+                segments[DIGIT_COUNT - 1 - i] = segments_array[number % 10];
                 number /= 10;
             } else if (!leading_zeros) {
-                segments[3 - i] = minus_sign;
+                segments[DIGIT_COUNT - 1 - i] = minus_sign;
                 break;
             } else {
                 segments[0] = minus_sign;
@@ -140,9 +170,9 @@ void tm1637_write_number(const tm1637_t *dev, int16_t number, bool dots, bool le
             }
         }
     } else {
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < DIGIT_COUNT; ++i) {
             if (number != 0) {
-                segments[3 - i] = segments_array[number % 10];
+                segments[DIGIT_COUNT - 1 - i] = segments_array[number % 10];
                 number /= 10;
             }
         }
