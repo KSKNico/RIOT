@@ -14,7 +14,7 @@ typedef struct {
     uint8_t brightness;
 } tm1637_params_t;
 
-/* tm1637 driver struct */
+/* tm1637 driver descriptor */
 typedef struct {
     /* configuration parameters */
     tm1637_params_t params;
@@ -24,9 +24,9 @@ typedef struct {
 /**
  * @brief Initializes the tm1637 device
  * 
- * @param dev device descriptor of the display
- * @param params configuration parameters
- * @return 0 on success, -1 on error
+ * @param[out] dev device descriptor of the display
+ * @param[in] params configuration parameters
+ * @return 0 on success, error otherwise
  */
 int tm1637_init(tm1637_t *dev, const tm1637_params_t *params);
 
@@ -40,17 +40,17 @@ int tm1637_init(tm1637_t *dev, const tm1637_params_t *params);
  * and the number.
  * 
  * 
- * @param dev device descriptor of the display
- * @param number number to write, in the range of 9999 to -999
- * @param dots If enabled, displays dots
- * @param leading_zeros If enabled, displays leading zeros
+ * @param[in] dev device descriptor of the display
+ * @param[in] number number to write, in the range of 9999 to -999
+ * @param[in] dots If enabled, displays dots
+ * @param[in] leading_zeros If enabled, displays leading zeros
  */
 void tm1637_write_number(const tm1637_t *dev, int16_t number, bool dots, bool leading_zeros);
 
 /**
  * @brief Clear display
  * 
- * @param dev device descriptor of the display
+ * @param[in] dev device descriptor of the display
  */
 void tm1637_clear(const tm1637_t *dev);
 

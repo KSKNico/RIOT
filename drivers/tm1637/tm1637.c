@@ -1,19 +1,53 @@
+/*
+ * Copyright (C) 2024 Nico Behrens <nifrabe@outlook.de>
+ *
+ * This file is subject to the terms and conditions of the GNU Lesser
+ * General Public License v2.1. See the file LICENSE in the top level
+ * directory for more details.
+ */
+
+/**
+ * @ingroup     drivers_tm1637
+ *
+ * @{
+ * @file
+ * @brief       Driver for the TM1637 4-digit 7-segment display
+ *
+ * @author      Nico Behrens <nifrabe@outlook.de>
+ *
+ * @}
+ */
+
 #include "tm1637.h"
 
 #include "periph/gpio.h"
 #include "ztimer.h"
 
+/* signals data transmission */
 #define DATA_COMMAND 0x40
+
+/* sets the brightness and display state to on/off */
 #define DISPLAY_AND_CONTROL_COMMAND 0x80
+
+/* sets the address where data is written*/
 #define ADDRESS_COMMAND 0xC0
 
-#define ON_BIT 0x08
+/* Bit mask to enable the display */
+#define ON_BIT_MASK 0x08
+
+/* Bit mask for the dot next to a digit */
 #define DOT_BIT_MASK 0x80
 
+/* Delay after a single bit transmission */
 #define BIT_TIME_MS 3
 
+/* Amount of digits */
 #define DIGIT_COUNT 4
 
+/**
+ * @brief Array encoding the segments for the digits from 0 to 9
+ * 
+ */
 static const uint8_t segments_array[] = {
     0b00111111, // 0
     0b00000110, // 1
@@ -27,12 +61,25 @@ static const uint8_t segments_array[] = {
     0b01101111, // 9
 };
 
+/**
+ * @brief Minus sign for negative numbers
+ * 
+ */
 static const uint8_t minus_sign = 0b01000000;
 
+/**
+ * @brief Delays the transmission to the display
+ * 
+ */
 static void delay(void) {
     ztimer_sleep(ZTIMER_MSEC, BIT_TIME_MS);
 }
 
+/**
+ * @brief Starts the transmission to the display
+ * 
+ * @param[in] dev device descriptor of the display
+ */
 static void start(const tm1637_t *dev) {
     gpio_write(dev->params.dio, false);
     delay();
@@ -45,7 +92,7 @@ static void start(const tm1637_t *dev) {
  * @note A stop is needed after transmission of certain bytes according to 
  * the specification.
  * 
- * @param[in] dev device descriptor of display
+ * @param[in] dev device descriptor of the display
  */
 static void stop(tm1637_t const *dev) {
     gpio_write(dev->params.dio, false);
@@ -74,7 +121,7 @@ static void transmit_byte(tm1637_t const *dev, uint8_t byte) {
         delay();
     }
 
-    // we do not read the ACK as it is not necessary for normal functionality
+    /* we do not read the ACK as it is not necessary for normal functionality */
     gpio_write(dev->params.clk, false);
     gpio_write(dev->params.dio, true);
     delay();
@@ -87,8 +134,8 @@ static void transmit_byte(tm1637_t const *dev, uint8_t byte) {
 /**
  * @brief Transmits the segements array of length 4 to the display
  * 
- * @param dev device descriptor of the display
- * @param segments array of length 4 encoding the display's segments
+ * @param[in] dev device descriptor of the display
+ * @param[in] segments array of length 4 encoding the display's segments
  */
 static void transmit_segments(const tm1637_t *dev, const uint8_t *segments) {
     start(dev);
@@ -104,7 +151,7 @@ static void transmit_segments(const tm1637_t *dev, const uint8_t *segments) {
     stop(dev);
 
     start(dev);
-    transmit_byte(dev, DISPLAY_AND_CONTROL_COMMAND | dev->params.brightness | ON_BIT);
+    transmit_byte(dev, DISPLAY_AND_CONTROL_COMMAND | dev->params.brightness | ON_BIT_MASK);
 
     stop(dev);
 }
@@ -124,6 +171,7 @@ int tm1637_init(tm1637_t *dev, const tm1637_params_t *params) {
 
     assert(params->brightness <= 0x07);
 
+    /* set the parameters */
     dev->params = *params;
 
  
@@ -148,6 +196,7 @@ void tm1637_clear(const tm1637_t *dev) {
 
 
 void tm1637_write_number(const tm1637_t *dev, int16_t number, bool dots, bool leading_zeros) {
+    /* with only 4 digits available, this range needs to be adhered to */
     assert(number <= 9999);
     assert(number >= -999);
 
@@ -178,6 +227,7 @@ void tm1637_write_number(const tm1637_t *dev, int16_t number, bool dots, bool le
         }
     }
 
+    /* fill out all segments that have not yet been filled with zeros */
     if (leading_zeros) {
         for (int i = 0; i < 4; ++i) {
             if (segments[i] == 0) {
